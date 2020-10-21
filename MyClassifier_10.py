@@ -7,11 +7,13 @@ import pandas as pd
 import numpy as np
 import cvxpy as cp
 
-#
+# CSV Importer
 from numpy import genfromtxt
 
 # Load Data from CSV
-my_data = genfromtxt('.csv', delimiter=',')
+trainData = genfromtxt('/Users/sunaybhat/Dropbox/UCLA/Fall 2020/mnist_train.csv', delimiter=',')
+testData = genfromtxt('mnist_test.csv', delimiter=',')
+
 
 
 class MyClassifier:
