@@ -51,6 +51,7 @@ class MyClassifier:
 
         # Load Data from CSV and only keep the good lines
         my_data=MyClassifier.LoadAndFilterData(train_data, train_label)
+        print(my_data)
             
         
     def f(self,input):
