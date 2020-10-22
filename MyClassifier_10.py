@@ -10,9 +10,6 @@ import cvxpy as cp
 #
 from numpy import genfromtxt
 
-# Load Data from CSV
-my_data = genfromtxt('.csv', delimiter=',')
-
 
 class MyClassifier:
     def __init__(self,K,M):
@@ -39,6 +36,8 @@ class MyClassifier:
         # looks like "self.W = a" and "self.w = b" for some variables "a"
         # and "b".
         print() #you can erase this line
+        # Load Data from CSV
+        my_data = genfromtxt(train_data, delimiter=',')
             
         
     def f(self,input):
@@ -97,3 +96,8 @@ class MyClassifier:
         # inputs.
         
         print() #you can erase this line
+def main():
+    print("Hello World!")
+
+if __name__ == "__main__":
+    main()
