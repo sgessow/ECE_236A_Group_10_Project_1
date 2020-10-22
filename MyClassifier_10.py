@@ -17,7 +17,19 @@ class MyClassifier:
         self.M = M  #Number of features
         self.W = []
         self.w = []
-        
+    
+    @staticmethod
+    def LoadAndFilterData(train_data, train_label):
+        my_data = genfromtxt(train_data, delimiter=',')
+        np.delete(my_data,0,axis=0)
+        lables=my_data[:,0]
+        good_rows=np.where(lables==train_label[0])
+        for i in train_label[1::]:
+            good_rows=np.append(good_rows,np.where(lables==i))
+        good_rows.sort()
+        my_data=np.take(my_data,good_rows,axis=0)
+        return my_data
+
     def train(self, p, train_data, train_label):
         
         # THIS IS WHERE YOU SHOULD WRITE YOUR TRAINING FUNCTION
@@ -35,9 +47,10 @@ class MyClassifier:
         # training. For example, your code should include a line that
         # looks like "self.W = a" and "self.w = b" for some variables "a"
         # and "b".
-        print() #you can erase this line
-        # Load Data from CSV
-        my_data = genfromtxt(train_data, delimiter=',')
+        #you can erase this line
+
+        # Load Data from CSV and only keep the good lines
+        my_data=MyClassifier.LoadAndFilterData(train_data, train_label)
             
         
     def f(self,input):
@@ -96,8 +109,14 @@ class MyClassifier:
         # inputs.
         
         print() #you can erase this line
+
+
+
+
 def main():
-    print("Hello World!")
+    C=MyClassifier(2,4)
+    C.train(.6,"mnist_train.csv",[1,7,9])
+    print("done")
 
 if __name__ == "__main__":
     main()
