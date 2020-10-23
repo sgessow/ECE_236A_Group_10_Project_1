@@ -32,7 +32,12 @@ class MyClassifier:
         good_rows.sort()
         my_data=np.take(my_data,good_rows,axis=0)
         return my_data
-    
+
+    @staticmethod
+    def load_data(train_data,train_label=[]):
+        my_data = genfromtxt(train_data, delimiter=',')
+        return my_data
+
     #function for displaying an image
     @staticmethod
     def display_number(input_vector, len_row):
@@ -67,9 +72,10 @@ class MyClassifier:
         #you can erase this line
 
         # Load Data from CSV and only keep the good lines
-        my_data=MyClassifier.load_filter_data(train_data, train_label)
-        MyClassifier.display_number(my_data[100][1::],28)   
-        print(my_data[100][0])  
+        my_data=MyClassifier.load_data(train_data)
+        #my_data=MyClassifier.load_filter_data(train_data,train_label)
+        MyClassifier.display_number(my_data[123][1::],28)   
+        print(my_data[123][0])  
         
     def f(self,input):
         # THIS IS WHERE YOU SHOULD WRITE YOUR CLASSIFICATION FUNCTION
@@ -133,7 +139,7 @@ class MyClassifier:
 
 def main():
     C=MyClassifier(2,4)
-    C.train(.6,"mnist_train.csv",[1,7])
+    C.train(.6,"mnist_train_1-7.csv",np.array([1,7]))
     print("done")
 
 if __name__ == "__main__":
