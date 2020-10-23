@@ -9,6 +9,9 @@ import cvxpy as cp
 
 #
 from numpy import genfromtxt
+#used for displaying the image
+#from matplotlib import pyplot as plt
+from PIL import Image, ImageOps
 
 
 class MyClassifier:
@@ -19,7 +22,7 @@ class MyClassifier:
         self.w = []
     
     @staticmethod
-    def LoadAndFilterData(train_data, train_label):
+    def load_filter_data(train_data, train_label):
         my_data = genfromtxt(train_data, delimiter=',')
         np.delete(my_data,0,axis=0)
         lables=my_data[:,0]
@@ -29,6 +32,20 @@ class MyClassifier:
         good_rows.sort()
         my_data=np.take(my_data,good_rows,axis=0)
         return my_data
+    
+    #function for displaying an image
+    @staticmethod
+    def display_letter(input_vector, len_row):
+        # pixels = letter_vector.reshape((len_row, -1))
+        # plt.imshow(pixels, cmap='gray_r')
+        # plt.show()
+        # return 0
+        pixels = (np.array(input_vector, dtype='float')).reshape(len_row,-1)
+        img = Image.fromarray(np.uint8(pixels * -255) , 'L')
+        img=ImageOps.invert(img)
+        img.show()
+
+
 
     def train(self, p, train_data, train_label):
         
@@ -50,9 +67,9 @@ class MyClassifier:
         #you can erase this line
 
         # Load Data from CSV and only keep the good lines
-        my_data=MyClassifier.LoadAndFilterData(train_data, train_label)
-        print(my_data)
-            
+        my_data=MyClassifier.load_filter_data(train_data, train_label)
+        MyClassifier.display_letter(my_data[100][1::],28)   
+        print(my_data[100][0])  
         
     def f(self,input):
         # THIS IS WHERE YOU SHOULD WRITE YOUR CLASSIFICATION FUNCTION
@@ -116,7 +133,7 @@ class MyClassifier:
 
 def main():
     C=MyClassifier(2,4)
-    C.train(.6,"mnist_train.csv",[1,7,9])
+    C.train(.6,"mnist_train.csv",[1,7])
     print("done")
 
 if __name__ == "__main__":
