@@ -7,13 +7,6 @@ import pandas as pd
 import numpy as np
 import cvxpy as cp
 
-#
-from numpy import genfromtxt
-
-# Load Data from CSV
-my_data = genfromtxt('.csv', delimiter=',')
-
-
 class MyClassifier:
     def __init__(self,K,M):
         self.K = K  #Number of classes
@@ -21,7 +14,7 @@ class MyClassifier:
         self.W = []
         self.w = []
         
-    def train(self, p, train_data, train_label):
+    def train(self, p, digit1, digit2, train_data, train_label):
         
         # THIS IS WHERE YOU SHOULD WRITE YOUR TRAINING FUNCTION
         #
@@ -38,10 +31,37 @@ class MyClassifier:
         # training. For example, your code should include a line that
         # looks like "self.W = a" and "self.w = b" for some variables "a"
         # and "b".
-        print() #you can erase this line
-            
+        digit_mask = (train_label == digit1) | (train_label == digit2)
+        digit_subset = train_data[digit_mask]
+        label_subset = train_label[digit_mask]
+
+        self.digit1 = digit1
+        self.digit2 = digit2
+        N = digit_subset.shape[0]
+
+        input_dim = digit_subset.shape[1] * digit_subset.shape[2]
+
+        t = cp.Variable(N)
+        a = cp.Variable(input_dim)
+        b = cp.Variable()
+
+        obj = cp.Minimize(cp.sum(t))
+        constraints = []
+        for i, (digit, label) in enumerate(zip(digit_subset, label_subset)):
+            flat_digit = digit.flatten()
+            if label == digit1:
+                constraints.append(t[i] >= 1 - (flat_digit.T @ a + b))
+            else:
+                constraints.append(t[i] >= 1 + (flat_digit.T @ a + b))
+            constraints.append(t[i] >= 0)
+        prob = cp.Problem(obj, constraints)
+
+        result = prob.solve(verbose=True)
+        self.W = a.value
+        self.w = b.value
+
         
-    def f(self,input):
+    def f(self, input):
         # THIS IS WHERE YOU SHOULD WRITE YOUR CLASSIFICATION FUNCTION
         #
         # The inputs of this function are:
@@ -54,8 +74,11 @@ class MyClassifier:
         # the corresponding input data point, equal to f(W^T y + w)
         # You should also check if the classifier is trained i.e. self.W and
         # self.w are nonempty
+        if input >= 0:
+            return self.digit1
+        else:
+            return self.digit2
         
-        print() #you can erase this line
         
     def classify(self,test_data):
         # THIS FUNCTION OUTPUTS ESTIMATED CLASSES FOR A DATA MATRIX
@@ -72,9 +95,11 @@ class MyClassifier:
         # test_results: this should be a vector of length N_test,
         # containing the estimations of the classes of all the N_test
         # inputs.
-        
-        print() #you can erase this line
-    
+        test_results = np.zeros(test_data.shape[0])
+        for i, test in enumerate(test_data):
+            test_results[i] = self.f(self.W @ test.flatten() + self.w)
+
+        return test_results    
     
     def TestCorrupted(self,p,test_data):
         # THIS FUNCTION OUTPUTS ESTIMATED CLASSES FOR A DATA MATRIX
