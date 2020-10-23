@@ -35,7 +35,7 @@ class MyClassifier:
     
     #function for displaying an image
     @staticmethod
-    def display_letter(input_vector, len_row):
+    def display_number(input_vector, len_row):
         # pixels = letter_vector.reshape((len_row, -1))
         # plt.imshow(pixels, cmap='gray_r')
         # plt.show()
@@ -68,7 +68,7 @@ class MyClassifier:
 
         # Load Data from CSV and only keep the good lines
         my_data=MyClassifier.load_filter_data(train_data, train_label)
-        MyClassifier.display_letter(my_data[100][1::],28)   
+        MyClassifier.display_number(my_data[100][1::],28)   
         print(my_data[100][0])  
         
     def f(self,input):
