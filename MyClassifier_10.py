@@ -3,6 +3,8 @@
 ECE 236A Project 1, MyClassifier.py template. Note that you should change the
 name of this file to MyClassifier_{groupno}.py
 """
+import time
+
 import pandas as pd
 import numpy as np
 import cvxpy as cp
@@ -54,12 +56,15 @@ class MyClassifier:
             else:
                 constraints.append(t[i] >= 1 + (flat_digit.T @ a + b))
             constraints.append(t[i] >= 0)
+        start_time = time.time()
         prob = cp.Problem(obj, constraints)
+        tottime = time.time() - start_time
 
+        start_time = time.time()
         result = prob.solve(verbose=True)
+        tottime = time.time() - start_time
         self.W = a.value
         self.w = b.value
-
         
     def f(self, input):
         # THIS IS WHERE YOU SHOULD WRITE YOUR CLASSIFICATION FUNCTION
