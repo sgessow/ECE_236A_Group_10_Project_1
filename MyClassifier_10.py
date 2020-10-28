@@ -10,6 +10,8 @@ import pandas as pd
 import numpy as np
 import cvxpy as cp
 
+rep = 1
+
 class MyClassifier:
     def __init__(self, K, M):
         self.K = K  #Number of classes
@@ -40,10 +42,12 @@ class MyClassifier:
             digit_mask = (train_label == digit_i) | (train_label == digit_j)
             digit_subset = train_data[digit_mask]
             label_subset = train_label[digit_mask]
+            #corrupt_subset = corrupt_images(images, p, rep)
+            #corrupt_labels = np.tile(label_subset, (rep,))
 
             N = digit_subset.shape[0]
 
-            input_dim = digit_subset.shape[1] * digit_subset.shape[2]
+            input_dim = digit_subset.shape[1]
 
             t = cp.Variable(N)
             a = cp.Variable(input_dim)
