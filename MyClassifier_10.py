@@ -3,6 +3,7 @@
 ECE 236A Project 1, MyClassifier.py template. Note that you should change the
 name of this file to MyClassifier_{groupno}.py
 """
+from itertools import combinations
 import time
 
 import pandas as pd
@@ -10,13 +11,14 @@ import numpy as np
 import cvxpy as cp
 
 class MyClassifier:
-    def __init__(self,K,M):
+    def __init__(self, K, M):
         self.K = K  #Number of classes
         self.M = M  #Number of features
         self.W = []
         self.w = []
+        self.pair_mapping = []
         
-    def train(self, p, digit1, digit2, train_data, train_label):
+    def train(self, p, train_data, train_label):
         
         # THIS IS WHERE YOU SHOULD WRITE YOUR TRAINING FUNCTION
         #
@@ -33,38 +35,49 @@ class MyClassifier:
         # training. For example, your code should include a line that
         # looks like "self.W = a" and "self.w = b" for some variables "a"
         # and "b".
-        digit_mask = (train_label == digit1) | (train_label == digit2)
-        digit_subset = train_data[digit_mask]
-        label_subset = train_label[digit_mask]
 
-        self.digit1 = digit1
-        self.digit2 = digit2
-        N = digit_subset.shape[0]
+        for i, (digit_i, digit_j) in enumerate(combinations(range(self.K), 2)):
+            digit_mask = (train_label == digit_i) | (train_label == digit_j)
+            digit_subset = train_data[digit_mask]
+            label_subset = train_label[digit_mask]
 
-        input_dim = digit_subset.shape[1] * digit_subset.shape[2]
+            N = digit_subset.shape[0]
 
-        t = cp.Variable(N)
-        a = cp.Variable(input_dim)
-        b = cp.Variable()
+            input_dim = digit_subset.shape[1] * digit_subset.shape[2]
 
-        obj = cp.Minimize(cp.sum(t))
-        constraints = []
-        for i, (digit, label) in enumerate(zip(digit_subset, label_subset)):
-            flat_digit = digit.flatten()
-            if label == digit1:
-                constraints.append(t[i] >= 1 - (flat_digit.T @ a + b))
-            else:
-                constraints.append(t[i] >= 1 + (flat_digit.T @ a + b))
-            constraints.append(t[i] >= 0)
-        start_time = time.time()
-        prob = cp.Problem(obj, constraints)
-        tottime = time.time() - start_time
+            t = cp.Variable(N)
+            a = cp.Variable(input_dim)
+            b = cp.Variable()
 
-        start_time = time.time()
-        result = prob.solve(verbose=True)
-        tottime = time.time() - start_time
-        self.W = a.value
-        self.w = b.value
+            mat_1 = np.zeros((N, input_dim))
+            mat_2 = np.zeros(N)
+
+            obj = cp.Minimize(cp.sum(t))
+            constraints = []
+            for i, (digit, label) in enumerate(zip(digit_subset, label_subset)):
+                flat_digit = digit.flatten()
+                if label == digit_i:
+                    mat_1[i,:] = -flat_digit.T
+                    mat_2[i] = -1
+                else:
+                    mat_1[i,:] = flat_digit.T
+                    mat_2[i] = 1
+            constraints = [t >= np.ones(N) + mat_1 @ a + mat_2.T * b,
+                           t >= np.zeros(N)]
+            start_time = time.time()
+            prob = cp.Problem(obj, constraints)
+
+            result = prob.solve(solver='SCS', verbose=True)
+            tottime = time.time() - start_time
+            print("Solve Time:", tottime)
+
+            self.W.append(a.value)
+            self.w.append(b.value)
+            self.pair_mapping.append((digit_i, digit_j))
+
+        self.W = np.array(self.W)
+        self.w = np.array(self.w)
+
         
     def f(self, input):
         # THIS IS WHERE YOU SHOULD WRITE YOUR CLASSIFICATION FUNCTION
@@ -79,10 +92,14 @@ class MyClassifier:
         # the corresponding input data point, equal to f(W^T y + w)
         # You should also check if the classifier is trained i.e. self.W and
         # self.w are nonempty
-        if input >= 0:
-            return self.digit1
-        else:
-            return self.digit2
+        scores = [0] * 10
+        for i, val in enumerate(input):
+            if val >= 0:
+                scores[self.pair_mapping[i][0]] += 1
+            else:
+                scores[self.pair_mapping[i][1]] += 1
+
+        return np.argmax(scores)
         
         
     def classify(self,test_data):
@@ -127,3 +144,16 @@ class MyClassifier:
         # inputs.
         
         print() #you can erase this line
+
+
+# A function which applies noise to the training or testing data
+# k specifies how many corrupted versions of each point to generate
+def apply_error(images, p, k=1):
+    image_sets = []
+    for i in range(k):
+        corrupt_images = images.copy()
+        error = np.random.random(images.shape) >= p
+        corrupt_images = corrupt_images*error
+        image_sets.append(corrupt_images)
+    
+    return np.concatenate(image_sets, axis=0)
