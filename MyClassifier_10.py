@@ -10,6 +10,8 @@ import pandas as pd
 import numpy as np
 import cvxpy as cp
 
+# This specifies how many corrupted copies to generate for each image
+# in training. If this is higher, this should increase accuracy.
 rep = 1
 
 class MyClassifier:
@@ -38,12 +40,13 @@ class MyClassifier:
         # looks like "self.W = a" and "self.w = b" for some variables "a"
         # and "b".
 
+        time1 = time.time()
         for i, (digit_i, digit_j) in enumerate(combinations(range(self.K), 2)):
             digit_mask = (train_label == digit_i) | (train_label == digit_j)
             digit_subset = train_data[digit_mask]
             label_subset = train_label[digit_mask]
-            #corrupt_subset = corrupt_images(images, p, rep)
-            #corrupt_labels = np.tile(label_subset, (rep,))
+            corrupt_subset = apply_error(digit_subset, p, rep)
+            corrupt_labels = np.tile(label_subset, (rep,))
 
             N = digit_subset.shape[0]
 
@@ -58,27 +61,29 @@ class MyClassifier:
 
             obj = cp.Minimize(cp.sum(t))
             constraints = []
-            for i, (digit, label) in enumerate(zip(digit_subset, label_subset)):
-                flat_digit = digit.flatten()
+            for i, (digit, label) in enumerate(zip(corrupt_subset, corrupt_labels)):
+                digit = digit.flatten()
                 if label == digit_i:
-                    mat_1[i,:] = -flat_digit.T
+                    mat_1[i,:] = -digit.T
                     mat_2[i] = -1
                 else:
-                    mat_1[i,:] = flat_digit.T
+                    mat_1[i,:] = digit.T
                     mat_2[i] = 1
             constraints = [t >= np.ones(N) + mat_1 @ a + mat_2.T * b,
                            t >= np.zeros(N)]
             start_time = time.time()
             prob = cp.Problem(obj, constraints)
 
-            result = prob.solve(solver='SCS', verbose=True)
+            print("Solving for digits {} and {}".format(digit_i, digit_j))
+
+            result = prob.solve(solver='SCS', verbose=False)
             tottime = time.time() - start_time
             print("Solve Time:", tottime)
 
             self.W.append(a.value)
             self.w.append(b.value)
             self.pair_mapping.append((digit_i, digit_j))
-
+        print("Full Time:", time.time() - time1)
         self.W = np.array(self.W)
         self.w = np.array(self.w)
 
