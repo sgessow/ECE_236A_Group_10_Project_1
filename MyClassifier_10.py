@@ -83,22 +83,21 @@ class MyClassifier:
     # Takes a Scalar input and hyperplane and outputs the class digit
     def f(self,input,vote_weight):
 
-        scores = [0] * 10
+        votes  = [0] * 10
+        weights = [0] * 10
         for i, val in enumerate(input):
-            if vote_weight == False:
-                if val >= 0:
-                    scores[self.ClassifierMap[i][0]] += 1
-                else:
-                    scores[self.ClassifierMap[i][1]] += 1
+            if val >= 0:
+                votes[self.ClassifierMap[i][0]] += 1
+                weights[self.ClassifierMap[i][0]] += abs(val)
+            else:
+                votes[self.ClassifierMap[i][1]] += 1
+                weights[self.ClassifierMap[i][1]] += abs(val)
 
-            if vote_weight == True:
-                if val >= 0:
-                    scores[self.ClassifierMap[i][0]] += abs(val)
-                else:
-                    scores[self.ClassifierMap[i][1]] += abs(val)
-
-
-        return np.argmax(scores)
+        if vote_weight == False | (np.sum(np.array(votes) == votes[np.argmax(votes)])) == 1:
+            return np.argmax(votes)
+        else:
+            mask = np.array(votes) == votes[np.argmax(votes)]
+            return np.argmax(mask * weights)
 
 
     # Function to classify test data
