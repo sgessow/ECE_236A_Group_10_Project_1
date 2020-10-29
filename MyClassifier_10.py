@@ -4,55 +4,63 @@ ECE 236A Project 1, MyClassifier.py template. Note that you should change the
 name of this file to MyClassifier_{groupno}.py
 """
 
+from itertools import combinations
+import time
+import numpy as np
+import cvxpy as cp
+
 
 class MyClassifier:
     def __init__(self,K,M):
         self.K = K  #Number of classes
         self.M = M  #Number of features
-        self.W = []
-        self.w = []
-        self.OnevOneLabel = list()
+        self.W = [] #Feature Weights
+        self.w = [] #OffsetValue
+        self.ClassifierMap = list() #Label for each classifier, list of two tuples
 
-    def train(self, p, train_data, train_label, time, itertools, np, cp):
+    def train(self, p, train_data, train_label):
 
-        start_time = time.time()
+        start_time = time.time() # Delete Later
 
         # Determine number of unique labels in data set
         allClassLabels = np.unique(train_label)
 
-        # Loop through unique paris (Combinations) of labels to run one vs one training
-        for iHyper,labels in enumerate(list(itertools.combinations(allClassLabels,2))):
+        # Loop through unique pairs (Combinations) of labels to run one vs one training
+        for iHyperPlane,(digit_i, digit_j) in enumerate(list(combinations(allClassLabels,2))):
 
-            print('Runing Classifier: ', str(iHyper + 1)) # Delete Later
+            print('Runing Classifier: ', str(iHyperPlane + 1), 'for ', str((digit_i, digit_j))) # Delete Later
 
             # make mask labels for this iteration
-            mask = (train_label == labels[0]) | (train_label == labels[1])
+            digit_mask = (train_label == digit_i) | (train_label == digit_j)
+
+            # Training Data as X for digits
+            X = train_data[digit_mask]
 
             # Convert labels to -1,1 using sign function and mean of labels, y will be utilized in constraints
-            y = np.sign(train_label[mask] - np.mean(labels))
-
-            # Training Data as X
-            X = train_data[mask,:]
+            y = np.sign(train_label[digit_mask] - np.mean((digit_i, digit_j)))
 
             # Number of datapoints after filtering
-            n = X .shape[0]
+            N = X .shape[0]
+
+            # Number of features, Should be same as self.M
+            M = X.shape[1]
 
             # Points to optimimze hyperplane (A vector of weights), b offset term
-            A = cp.Variable(X.shape[1])
+            A = cp.Variable(M)
             b = cp.Variable()
 
             # Substitution variable
-            t = cp.Variable(n)
+            t = cp.Variable(N)
 
             # Objective function to minimize: sum of all vectors from classifier hyperplane
             objectiveF = cp.Minimize(cp.sum(t))
 
-            # Constraints: t >=1 + y * (Ax + b) and t >= 0 for every n
-            constraints = []
-            for i, (digit, label) in enumerate(zip(X, y)):
-                flat_digit = digit.flatten()
-                constraints.append(t[i] >= (1 + y[i] * (flat_digit.T @ A + b)))
-                constraints.append(t[i] >= 0)
+            # Multiple y through X to apply sign to every feature of every digit in X
+            mat_Xsign = y[:, np.newaxis] * X
+
+            # Constraints: t >=1 + y * (Ax + b) and t >= 0 for every digit in matrix form
+            constraints = [t >= np.ones(N) + mat_Xsign @ A + y.T * b,
+                           t >= np.zeros(N)]
 
             # Instantiate 'Problem' Class in CVXPY
             prob = cp.Problem(objectiveF, constraints)
@@ -61,111 +69,58 @@ class MyClassifier:
             prob.solve(verbose=False)
 
             # Update Classifier attributes
+            self.W.append(A.value)
+            self.w.append(b.value)
+            self.ClassifierMap.append((int(digit_i), int(digit_j)))
 
-            self.W = np.append(self.W,A.value)
-            self.w = np.append(self.w,b.value)
-            self.OnevOneLabel.append(labels)
-
-        self.W = self.W.reshape(self.M,-1)
+        # Shape weight arrays and return
+        self.W = np.array(self.W)
+        self.w = np.array(self.w)
         tottime = time.time() - start_time
+
         print('Done  training, total time =',round(tottime,2) , ' seconds')
             
     # Takes a Scalar input and hyperplane and outputs the class digit
-    def f(self,input,iHyper):
+    def f(self,input,vote_weight):
 
-        if input >= 0:
-            return self.OnevOneLabel[iHyper][0]
-        else:
-            return self.OnevOneLabel[iHyper][1]
+        scores = [0] * 10
+        for i, val in enumerate(input):
+            if vote_weight == False:
+                if val >= 0:
+                    scores[self.ClassifierMap[i][0]] += 1
+                else:
+                    scores[self.ClassifierMap[i][1]] += 1
+
+            if vote_weight == True:
+                if val >= 0:
+                    scores[self.ClassifierMap[i][0]] += abs(val)
+                else:
+                    scores[self.ClassifierMap[i][1]] += abs(val)
+
+
+        return np.argmax(scores)
+
 
     # Function to classify test data
-    def classify(self,test_data,time,np):
+    def classify(self,test_data,vote_weight=False):
 
-        start_time = time.time()
-
-        # Remove Labels
-        test_data = test_data[:, 1:]
+        # Check for weights being trained
+        if len(self.W) == 0 | len(self.w) == 0:
+            print('Error: Weight (W and w) have not yet been trained in classifier!...')
+            return -1
 
         # Initialize results array
-        test_results = np.zeros([test_data.shape[0], len(self.OnevOneLabel)])
+        test_results = np.zeros(test_data.shape[0])
 
-        # Loop through hyperplanes, One v One
-        for iHyper, labels in enumerate(self.OnevOneLabel):
+        # Loop through rows and pass in to f class function
+        for iRow, test in enumerate(test_data):
 
-            # Loop through rows, f() takes only one scalar input
-            for iRow in range(0, test_data.shape[0]):
-
-                # Fill out results array for every row and for every hyperplane
-                test_results[iRow, iHyper] = self.f(test_data[iRow, :] @ self.W[:, iHyper] + self.w[iHyper], iHyper)
-
-        # One ve One most common results implementation (vote by class), take mode of matrix in hyperplane dimension
-        test_results, _ = self.mode(test_results,np, axis=1)
-
-        tottime = time.time() - start_time
-        print('Done Classification,  total time =',round(tottime,2) , ' seconds')
+            # Call f and store result
+            test_results[iRow] = self.f(self.W @ test.flatten() + self.w,vote_weight)
 
         return test_results
     
     
     def TestCorrupted(self,p,test_data):
-        # THIS FUNCTION OUTPUTS ESTIMATED CLASSES FOR A DATA MATRIX
-        #
-        #
-        # The inputs of this function are:
-        #
-        # self: a reference to the classifier object.
-        # test_data: a matrix of dimesions N_test x M, where N_test
-        # is the number of inputs used for training. Each row is an
-        # input vector.
-        #
-        # p:erasure probability
-        #
-        #
-        # The outputs of this function are:
-        #
-        # test_results: this should be a vector of length N_test,
-        # containing the estimations of the classes of all the N_test
-        # inputs.
-        
+
         print()
-
-    # function for displaying an image
-    @staticmethod
-    def display_number(input_vector, len_row):
-        # pixels = letter_vector.reshape((len_row, -1))
-        # plt.imshow(pixels, cmap='gray_r')
-        # plt.show()
-        # return 0
-        pixels = (np.array(input_vector, dtype='float')).reshape(len_row, -1)
-        img = Image.fromarray(np.uint8(pixels * -255), 'L')
-        img = ImageOps.invert(img)
-        img.show()
-
-    @staticmethod
-    def load_filter_data(train_data, train_label):
-        my_data = genfromtxt(train_data, delimiter=',')
-        np.delete(my_data, 0, axis=0)
-        lables = my_data[:, 0]
-        good_rows = np.where(lables == train_label[0])
-        for i in train_label[1::]:
-            good_rows = np.append(good_rows, np.where(lables == i))
-        good_rows.sort()
-        my_data = np.take(my_data, good_rows, axis=0)
-        return my_data
-
-    @staticmethod
-    def mode(a, np, axis=0):
-        scores = np.unique(np.ravel(a))
-        testshape = list(a.shape)
-        testshape[axis] = 1
-        oldmostfreq = np.zeros(testshape)
-        oldcounts = np.zeros(testshape)
-
-        for score in scores:
-            template = (a == score)
-            counts = np.expand_dims(np.sum(template, axis),axis)
-            mostfrequent = np.where(counts > oldcounts, score, oldmostfreq)
-            oldcounts = np.maximum(counts, oldcounts)
-            oldmostfreq = mostfrequent
-
-        return mostfrequent, oldcounts
