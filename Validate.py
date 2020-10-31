@@ -2,7 +2,7 @@
 from numpy import genfromtxt
 from PIL import Image, ImageOps
 from MyClassifier_10 import MyClassifier
-import numpy as np
+
 testData = genfromtxt('mnist_test.csv', delimiter=',')
 # Get Rid of Headers
 testData = testData[1:]
