@@ -18,7 +18,7 @@ class MyClassifier:
         self.w = [] #OffsetValue
         self.ClassifierMap = list() #Label for each classifier, list of two tuples
 
-    def train(self, p, train_data, train_label):
+    def train(self, p, train_data, train_label,nsets=1):
 
         start_time = time.time() # Delete Later
 
@@ -36,8 +36,14 @@ class MyClassifier:
             # Training Data as X for digits
             X = train_data[digit_mask]
 
+            # Corrupt Data
+            if p > 0:
+                X = self.TrainCorrupted(p,X,nsets)
+                print('Training with corrupted data ')
+
             # Convert labels to -1,1 using sign function and mean of labels, y will be utilized in constraints
             y = np.sign(train_label[digit_mask] - np.mean((digit_i, digit_j)))
+            y = np.tile(y,nsets)
 
             # Number of datapoints after filtering
             N = X .shape[0]
@@ -83,7 +89,9 @@ class MyClassifier:
     # Takes a Scalar input and hyperplane and outputs the class digit
     def f(self,input):
 
+        # Vector to tabulate classification
         votes  = [0] * 10
+
         for i, val in enumerate(input):
             if val >= 0:
                 votes[self.ClassifierMap[i][0]] += 1
@@ -91,6 +99,7 @@ class MyClassifier:
             else:
                 votes[self.ClassifierMap[i][1]] += 1
 
+        # Return index/digit with most classificatons/votes
         return np.argmax(votes)
 
 
@@ -116,6 +125,29 @@ class MyClassifier:
     
     def TestCorrupted(self,p,test_data):
 
+        # Setup random matrix to corrupt data
+        random_mask = np.random.random(test_data.shape) > p
+        total_killed = np.sum(random_mask)
 
+        # Corrupt data
+        corrupt_Data = test_data * random_mask
 
-        print()
+        print('Killed ', round((1 - total_killed/(corrupt_Data.shape[0]*784)) * 100,2), '% Pixels of test data...')
+
+        return self.classify(corrupt_Data)
+
+    def TrainCorrupted(self,p,train_data,n_sets):
+
+        # Setup random matrix to corrupt data and loop through sets desired
+        corrupt_Data = np.empty((0,784))
+        total_killed = 0
+        for i in range(0,n_sets):
+            random_mask = np.random.random(train_data.shape) > p
+            total_killed += np.sum(random_mask)
+
+            # Corrupt data and return
+            corrupt_Data = np.append(corrupt_Data, train_data * random_mask,axis=0)
+
+        print('Killed ', round((1 - total_killed / (corrupt_Data.shape[0] * 784)) * 100, 2), '% Pixels of training data...')
+
+        return corrupt_Data
