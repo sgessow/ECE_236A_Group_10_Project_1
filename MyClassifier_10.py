@@ -81,27 +81,21 @@ class MyClassifier:
         print('Done  training, total time =',round(tottime,2) , ' seconds')
             
     # Takes a Scalar input and hyperplane and outputs the class digit
-    def f(self,input,vote_weight):
+    def f(self,input):
 
         votes  = [0] * 10
-        weights = [0] * 10
         for i, val in enumerate(input):
             if val >= 0:
                 votes[self.ClassifierMap[i][0]] += 1
-                weights[self.ClassifierMap[i][0]] += abs(val)
+
             else:
                 votes[self.ClassifierMap[i][1]] += 1
-                weights[self.ClassifierMap[i][1]] += abs(val)
 
-        if vote_weight == False | (np.sum(np.array(votes) == votes[np.argmax(votes)])) == 1:
-            return np.argmax(votes)
-        else:
-            mask = np.array(votes) == votes[np.argmax(votes)]
-            return np.argmax(mask * weights)
+        return np.argmax(votes)
 
 
     # Function to classify test data
-    def classify(self,test_data,vote_weight=False):
+    def classify(self,test_data):
 
         # Check for weights being trained
         if len(self.W) == 0 | len(self.w) == 0:
@@ -115,11 +109,13 @@ class MyClassifier:
         for iRow, test in enumerate(test_data):
 
             # Call f and store result
-            test_results[iRow] = self.f(self.W @ test.flatten() + self.w,vote_weight)
+            test_results[iRow] = self.f(self.W @ test.flatten() + self.w)
 
         return test_results
     
     
     def TestCorrupted(self,p,test_data):
+
+
 
         print()
