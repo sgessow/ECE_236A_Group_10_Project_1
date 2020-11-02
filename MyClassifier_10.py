@@ -9,10 +9,12 @@ import time
 import pandas as pd
 import numpy as np
 import cvxpy as cp
+import sys, os
+
 
 # This specifies how many corrupted copies to generate for each image
 # in training. If this is higher, this should increase accuracy.
-rep = 1
+rep = 3
 
 class MyClassifier:
     def __init__(self, K, M):
@@ -47,8 +49,7 @@ class MyClassifier:
             label_subset = train_label[digit_mask]
             corrupt_subset = apply_error(digit_subset, p, rep)
             corrupt_labels = np.tile(label_subset, (rep,))
-
-            N = digit_subset.shape[0]
+            N = digit_subset.shape[0]*rep
 
             input_dim = digit_subset.shape[1]
 
@@ -75,10 +76,16 @@ class MyClassifier:
             prob = cp.Problem(obj, constraints)
 
             print("Solving for digits {} and {}".format(digit_i, digit_j))
-
-            result = prob.solve(solver='SCS', verbose=False)
+            #_original_stdout = sys.stdout
+            #sys.stdout = open(os.devnull, 'w')
+            tol_goal=1e-1
+            tol_ok=.5
+            result = prob.solve(solver="ECOS",max_iters=50,abstol=tol_goal,reltol=tol_goal,feastol=tol_goal,abstol_inacc=tol_ok,reltol_inacc=tol_ok,feastol_inacc=tol_ok*2,verbose=True)
+            #sys.stdout.close()
+            #sys.stdout = _original_stdout
             tottime = time.time() - start_time
             print("Solve Time:", tottime)
+            print(result)
 
             self.W.append(a.value)
             self.w.append(b.value)
@@ -161,8 +168,9 @@ def apply_error(images, p, k=1):
     image_sets = []
     for i in range(k):
         corrupt_images = images.copy()
-        error = np.random.random(images.shape) >= p
+        error = np.random.random(images.shape) >= (p)
         corrupt_images = corrupt_images*error
         image_sets.append(corrupt_images)
+        p=p+.2
     
     return np.concatenate(image_sets, axis=0)
