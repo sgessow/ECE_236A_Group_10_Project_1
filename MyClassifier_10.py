@@ -18,7 +18,7 @@ class MyClassifier:
         self.w = [] #OffsetValue
         self.ClassifierMap = list() #Label for each classifier, list of two tuples
 
-    def train(self, p, train_data, train_label,nsets=1):
+    def train(self, p, train_data, train_label,ntrains =1):
 
         start_time = time.time() # Delete Later
 
@@ -28,55 +28,64 @@ class MyClassifier:
         # Loop through unique pairs (Combinations) of labels to run one vs one training
         for iHyperPlane,(digit_i, digit_j) in enumerate(list(combinations(allClassLabels,2))):
 
-            print('Runing Classifier: ', str(iHyperPlane + 1), 'for ', str((digit_i, digit_j))) # Delete Later
+            print('Runing Classifier: ', str(iHyperPlane + 1), 'for ', str((digit_i, digit_j)))  # Delete Later
 
-            # make mask labels for this iteration
-            digit_mask = (train_label == digit_i) | (train_label == digit_j)
+            # Setup variables to store sets of averaging
+            tot_W = []
+            tot_w = []
 
-            # Training Data as X for digits
-            X = train_data[digit_mask]
+            # Run through number of trainings to average later
+            for i in range(0,ntrains):
 
-            # Corrupt Data
-            if p > 0:
-                X = self.TrainCorrupted(p,X,nsets)
-                print('Training with corrupted data ')
+                # make mask labels for this iteration
+                digit_mask = (train_label == digit_i) | (train_label == digit_j)
 
-            # Convert labels to -1,1 using sign function and mean of labels, y will be utilized in constraints
-            y = np.sign(train_label[digit_mask] - np.mean((digit_i, digit_j)))
-            y = np.tile(y,nsets)
+                # Training Data as X for digits
+                X = train_data[digit_mask]
 
-            # Number of datapoints after filtering
-            N = X .shape[0]
+                # Corrupt Data
+                if p > 0:
+                    X = self.TrainCorrupted(0.6,X)
+                    print('Training with corrupted data ')
 
-            # Number of features, Should be same as self.M
-            M = X.shape[1]
+                # Convert labels to -1,1 using sign function and mean of labels, y will be utilized in constraints
+                y = np.sign(train_label[digit_mask] - np.mean((digit_i, digit_j)))
 
-            # Points to optimimze hyperplane (A vector of weights), b offset term
-            A = cp.Variable(M)
-            b = cp.Variable()
+                # Number of datapoints after filtering
+                N = X .shape[0]
 
-            # Substitution variable
-            t = cp.Variable(N)
+                # Number of features, Should be same as self.M
+                M = X.shape[1]
 
-            # Objective function to minimize: sum of all vectors from classifier hyperplane
-            objectiveF = cp.Minimize(cp.sum(t))
+                # Points to optimimze hyperplane (A vector of weights), b offset term
+                A = cp.Variable(M)
+                b = cp.Variable()
 
-            # Multiple y through X to apply sign to every feature of every digit in X
-            mat_Xsign = y[:, np.newaxis] * X
+                # Substitution variable
+                t = cp.Variable(N)
 
-            # Constraints: t >=1 + y * (Ax + b) and t >= 0 for every digit in matrix form
-            constraints = [t >= np.ones(N) + mat_Xsign @ A + y.T * b,
-                           t >= np.zeros(N)]
+                # Objective function to minimize: sum of all vectors from classifier hyperplane
+                objectiveF = cp.Minimize(cp.sum(t))
 
-            # Instantiate 'Problem' Class in CVXPY
-            prob = cp.Problem(objectiveF, constraints)
+                # Multiple y through X to apply sign to every feature of every digit in X
+                mat_Xsign = y[:, np.newaxis] * X
 
-            # Solve problem
-            prob.solve(verbose=False)
+                # Constraints: t >=1 + y * (Ax + b) and t >= 0 for every digit in matrix form
+                constraints = [t >= np.ones(N) + mat_Xsign @ A + y.T * b,
+                               t >= np.zeros(N)]
+
+                # Instantiate 'Problem' Class in CVXPY
+                prob = cp.Problem(objectiveF, constraints)
+
+                # Solve problem
+                prob.solve(verbose=False)
+
+                tot_W.append(A.value)
+                tot_w.append(b.value)
 
             # Update Classifier attributes
-            self.W.append(A.value)
-            self.w.append(b.value)
+            self.W.append(np.mean(tot_W,axis=0))
+            self.w.append(np.mean(tot_w,axis=0))
             self.ClassifierMap.append((int(digit_i), int(digit_j)))
 
         # Shape weight arrays and return
@@ -136,7 +145,7 @@ class MyClassifier:
 
         return self.classify(corrupt_Data)
 
-    def TrainCorrupted(self,p,train_data,n_sets):
+    def TrainCorrupted(self,p,train_data,n_sets=1):
 
         # Setup random matrix to corrupt data and loop through sets desired
         corrupt_Data = np.empty((0,784))
