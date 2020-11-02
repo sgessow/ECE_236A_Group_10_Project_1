@@ -43,7 +43,10 @@ class MyClassifier:
         # and "b".
 
         time1 = time.time()
+        unique_lables=np.unique(train_label).astype(int)
         for i, (digit_i, digit_j) in enumerate(combinations(range(self.K), 2)):
+            digit_i=unique_lables[digit_i]
+            digit_j=unique_lables[digit_j]
             digit_mask = (train_label == digit_i) | (train_label == digit_j)
             digit_subset = train_data[digit_mask]
             label_subset = train_label[digit_mask]
@@ -80,7 +83,7 @@ class MyClassifier:
             #sys.stdout = open(os.devnull, 'w')
             tol_goal=1e-1
             tol_ok=.5
-            result = prob.solve(solver="ECOS",max_iters=50,abstol=tol_goal,reltol=tol_goal,feastol=tol_goal,abstol_inacc=tol_ok,reltol_inacc=tol_ok,feastol_inacc=tol_ok*2,verbose=True)
+            result = prob.solve(solver="ECOS",max_iters=50,abstol=tol_goal,reltol=tol_goal,feastol=tol_goal,abstol_inacc=tol_ok,reltol_inacc=tol_ok,feastol_inacc=tol_ok*2,verbose=False)
             #sys.stdout.close()
             #sys.stdout = _original_stdout
             tottime = time.time() - start_time
