@@ -75,7 +75,7 @@ class MyClassifier:
 
             tol_goal = 1e-1
             tol_ok = .5
-            prob.solve(solver="ECOS", max_iters=50, abstol=tol_goal, reltol=tol_goal, feastol=tol_goal,
+            prob.solve(solver="ECOS", max_iters=75, abstol=tol_goal, reltol=tol_goal, feastol=tol_goal,
                                 abstol_inacc=tol_ok, reltol_inacc=tol_ok, feastol_inacc=tol_ok * 2, verbose=False)
 
 
