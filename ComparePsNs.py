@@ -2,50 +2,36 @@ import Validate
 from Validate import CorruptTrain_1and7
 import numpy as np
 import matplotlib.pyplot as plt
-from Validate import validate_1and7
 
-Baseline = list()
-for i in range(1,11):
-    Baseline.append(validate_1and7())
-
-Train1 = list()
-for i in range(1,11):
-    Train1.append(CorruptTrain_1and7(1))
-
-Train2 = list()
-for i in range(1,11):
-    Train2.append(CorruptTrain_1and7(2))
 
 Train3 = list()
-for i in range(1, 11):
-    Train3.append(CorruptTrain_1and7(3))
+for i in range(1,11):
+    Train3.append(CorruptTrain_1and7(1))
 
-Train4 = list()
-for i in range(1, 11):
-    Train4.append(CorruptTrain_1and7(4))
+TrainTiled = list()
+for i in range(1,11):
+    TrainTiled.append(CorruptTrain_1and7(2))
+
+
+Train3 = [[99.12159038372631, 99.07535829865927, 98.84419787332409, 95.79288025889967]]
+TrainTiled = [[99.4914470642626, 98.93666204345816, 99.02912621359224, 97.31853906611188]]
 
 
 
-Baseline_Avg = np.nanmean(Baseline,axis=0)
-Train1_Avg = np.nanmean(Train1,axis=0)
-Train2_Avg = np.nanmean(Train2,axis=0)
 Train3_Avg = np.nanmean(Train3,axis=0)
-Train4_Avg = np.nanmean(Train4,axis=0)
+TrainTiled_Avg = np.nanmean(TrainTiled,axis=0)
 
-x = [0, 0.2, 0.4, 0.6]
+x = [0, 0.4, 0.6, 0.8]
 
-plt.plot(x,Baseline_Avg, color='black', linewidth=2.5,label="Baseline")
-plt.plot(x,Train1_Avg, color='olive', linewidth=1.5, label="1 Sets")
-plt.plot(x,Train2_Avg, color='cyan', linewidth=1.5, label="2 Sets")
-plt.plot(x,Train3_Avg, color='red', linewidth=1.5, label="3 Sets")
-plt.plot(x,Train4_Avg, color='blue', linewidth=1.5, label="4 Sets")
-
+# plt.plot(x,Baseline[0], color='black', linewidth=2.5,label="Baseline")
+plt.plot(x,Train3_Avg, color='olive', linewidth=1.5, label="3 Sets")
+plt.plot(x,TrainTiled_Avg, color='blue', linewidth=1.5, label="Tiled Composite")
 plt.legend()
 plt.grid()
 
 plt.xlabel('Test Data Corruption Level (p)',fontsize = 13,fontweight='bold')
 plt.ylabel('Percent Accuracy (%)',fontsize = 13,fontweight='bold')
-plt.title('Single Classifier 1 and 7\n N Training Sets Variaton on P=0.6',fontsize = 16,fontweight='bold')
+plt.title('Single Classifier 1 and 7\n Sets vs Composite Tiling Training Variatons',fontsize = 16,fontweight='bold')
 
 
 
@@ -140,6 +126,6 @@ plt.grid()
 
 plt.xlabel('Test Data Corruption Level (p)',fontsize = 13,fontweight='bold')
 plt.ylabel('Percent Accuracy (%)',fontsize = 13,fontweight='bold')
-plt.title('Single Classifier 1 and 7\n P and N Training Variatons',fontsize = 16,fontweight='bold')
+plt.title('Single Classifier 1 and 7\n Sets vs Composite Tiling Training Variatons',fontsize = 16,fontweight='bold')
 
 

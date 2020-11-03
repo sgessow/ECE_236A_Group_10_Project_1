@@ -18,7 +18,7 @@ class MyClassifier:
         self.w = [] #OffsetValue
         self.ClassifierMap = list() #Label for each classifier, list of two tuples
 
-    def train(self, p, train_data, train_label,ntrains =1):
+    def train(self, p, train_data, train_label):
 
         start_time = time.time() # Delete Later
 
@@ -35,7 +35,7 @@ class MyClassifier:
             tot_w = []
 
             # Run through number of trainings to average later
-            for i in range(0,ntrains):
+            for i in range(0,3):
 
                 # make mask labels for this iteration
                 digit_mask = (train_label == digit_i) | (train_label == digit_j)
@@ -44,12 +44,12 @@ class MyClassifier:
                 X = train_data[digit_mask]
 
                 # Corrupt Data
-                if p > 0:
-                    X = self.TrainCorrupted(0.6,X)
-                    print('Training with corrupted data ')
+                X,_ = self.apply_error(0.6,X,1)
+                print('Training with corrupted data')
 
                 # Convert labels to -1,1 using sign function and mean of labels, y will be utilized in constraints
                 y = np.sign(train_label[digit_mask] - np.mean((digit_i, digit_j)))
+                y = np.tile(y, 1)
 
                 # Number of datapoints after filtering
                 N = X .shape[0]
@@ -77,8 +77,10 @@ class MyClassifier:
                 # Instantiate 'Problem' Class in CVXPY
                 prob = cp.Problem(objectiveF, constraints)
 
-                # Solve problem
-                prob.solve(verbose=False)
+                tol_goal = 1e-1
+                tol_ok = .5
+                prob.solve(solver="ECOS", max_iters=50, abstol=tol_goal, reltol=tol_goal, feastol=tol_goal,
+                                    abstol_inacc=tol_ok, reltol_inacc=tol_ok, feastol_inacc=tol_ok * 2, verbose=False)
 
                 tot_W.append(A.value)
                 tot_w.append(b.value)
@@ -115,6 +117,10 @@ class MyClassifier:
     # Function to classify test data
     def classify(self,test_data):
 
+        # Remove labels if extra columns find
+        while test_data.shape[1] > self.M:
+            test_data = test_data[:, 1:]
+
         # Check for weights being trained
         if len(self.W) == 0 | len(self.w) == 0:
             print('Error: Weight (W and w) have not yet been trained in classifier!...')
@@ -130,33 +136,32 @@ class MyClassifier:
             test_results[iRow] = self.f(self.W @ test.flatten() + self.w)
 
         return test_results
-    
-    
+
     def TestCorrupted(self,p,test_data):
 
-        # Setup random matrix to corrupt data
-        random_mask = np.random.random(test_data.shape) > p
-        total_killed = np.sum(random_mask)
+        # Remove labels if extra columns find
+        while test_data.shape[1] > self.M:
+            test_data = test_data[:, 1:]
 
-        # Corrupt data
-        corrupt_Data = test_data * random_mask
+        corrupt_Data, total_killed = self.apply_error(p, test_data)
 
         print('Killed ', round((1 - total_killed/(corrupt_Data.shape[0]*784)) * 100,2), '% Pixels of test data...')
 
         return self.classify(corrupt_Data)
 
-    def TrainCorrupted(self,p,train_data,n_sets=1):
+    # A function which applies noise to the training or testing data
+    @staticmethod
+    def apply_error(p, images,k=1):
+        image_sets = []
+        feature_erased_list = []
 
-        # Setup random matrix to corrupt data and loop through sets desired
-        corrupt_Data = np.empty((0,784))
-        total_killed = 0
-        for i in range(0,n_sets):
-            random_mask = np.random.random(train_data.shape) > p
-            total_killed += np.sum(random_mask)
+        for i in range(k):
 
-            # Corrupt data and return
-            corrupt_Data = np.append(corrupt_Data, train_data * random_mask,axis=0)
+            corrupt_images = images.copy()
+            error = np.random.random(images.shape) >= p
+            feature_erased_list = images.shape[1] * np.ones(images.shape[0]) - np.sum(error, axis=1)
+            corrupt_images = corrupt_images * error
+            image_sets.append(corrupt_images)
+            p += 0.2
 
-        print('Killed ', round((1 - total_killed / (corrupt_Data.shape[0] * 784)) * 100, 2), '% Pixels of training data...')
-
-        return corrupt_Data
+        return np.concatenate(image_sets, axis=0), feature_erased_list[0]
