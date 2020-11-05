@@ -1,0 +1,4 @@
+
+*.pkl
+Data/mnist_test.csv
+Data/mnist_train.csv
